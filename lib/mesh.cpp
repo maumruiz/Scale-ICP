@@ -64,9 +64,9 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
     cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
 
     bool matured = false;
-    // true to prescale input pairs, i.e., ratio between [distance between farthest 2 points on fixed mesh2] and [distance between farthest 2 points on transforming mesh1]
-    bool prescale = false;
+    bool prescale = false; // true to prescale input pairs
 
+	// Scale to ratio between [distance between farthest 2 points on fixed mesh2] and [distance between farthest 2 points on transforming mesh1]
     if (prescale)		
 		for (int v = 0; v < (int) verts.size(); v++)
 			for (int c = 0; c < 3; c++)
@@ -74,10 +74,6 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
 
     // Put all verts in samples[] because code below uses samples[] everywhere.
     //  protect original samples[] in copy vectors
-    vector< int > sampCopy, samp2Copy;
-    sampCopy = samples;
-    samp2Copy = mesh2->samples;
-    samples.clear();
     for (int i = 0; i < (int) verts.size(); i++)
         samples.push_back(i);
     mesh2->samples.clear();
@@ -109,14 +105,14 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
 
 	MatrixXf ms1(k, nP1), ms2(k, nP1); // Mean-shifted kxnP1 matrix for the mesh1.samples and matched samples in mesh2; X is for dynamic size f is for float
 	Matrix3f cov12; // kxk cross-covariance mtrx of 2 sets, mesh & voxels where k = 3
-	Matrix4f Q; //complicated mtrx created using cov12
+	Matrix4f Q; //complicated matrix created using cov12
 
 	float** R1 = new float*[3]; //desired 3x3 rotation mtrx of current iteration
 	for (int i = 0; i < 3; i++)
 		R1[i] = new float[3];
 	float* t1 = new float[3]; //desired 1x3 translation
 
-    // Parameters of the linear system to be solved in Adaptive Scaling mode
+    // Parameters of the linear system to be solved in Adaptive Scaling
 	float A, B;
     float* C = new float[3];
     float* D = new float[3];
@@ -160,21 +156,15 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
 			oneToOneMatches = false;
 		}
 
+		// Get ready for the upcoming iteration; to prevent selection of a mesh2 vertex more than once
         if (oneToOneMatches)
-		{
 			for (int i = 0; i < nP2; i++)
-			{
-				if (mesh2->verts[i]->closestVertIdx != -1)
-					nMatched2++;
-				// Get ready for the upcoming iteration; to prevent selection of a mesh2 vertex more than once, I use closestVertIdx==-1 flag
 				mesh2->verts[i]->closestVertIdx = -1;
-			}
-		}
 
         float dist; //closest w.r.t. Euclidean distance
 		vector< int > matchedP2s; //idxs of mesh2 points that are matched to mesh1 points
 
-        //exhaustive search for closest matches in quadratic time
+        //Brute force search for closest matches in quadratic time (n^2)
 		for (int bv1 = 0; bv1 < nP1; bv1++) //for each mesh verts
 		{
 			float minDist = INF;
@@ -286,7 +276,7 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
             B += verts[ samples[v] ]->coords[0]*mesh2->verts[ matchedP2s[v] ]->coords[0] + verts[ samples[v] ]->coords[1]*mesh2->verts[ matchedP2s[v] ]->coords[1] + verts[ samples[v] ]->coords[2]*mesh2->verts[ matchedP2s[v] ]->coords[2];
         }
 
-        //solve for Px = r linear system to decide x = [s t1.x t1.y t1.z] where s is the uniform scale factor, t1[] is the rotation
+        //solve for Px = r linear system to decide x = [s t1.x t1.y t1.z] where s is the uniform scale factor, t1[] is the translation
         Matrix4f P;
         P << A,C[0],C[1],C[2],	C[0],(float)nP1,0.0f,0.0f,	C[1],0.0f,(float)nP1,0.0f,	C[2],0.0f,0.0f,(float)nP1;
         //cout << "Here is the matrix P:\n" << P << endl;
@@ -335,10 +325,6 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
 	delete [] D;
 
     cout << nIters-1 << "'th ICP iteration w/ final mse: " << mse << "\nICP done!\n";
-
-    //recover the original sample in case i need them later
-    samples = sampCopy;
-    mesh2->samples = samp2Copy;
 
     return mse;
 }

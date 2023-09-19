@@ -27,9 +27,8 @@ struct Vertex
 	int idx; //Index of the vertex
 	float* coords; //Coordinates
 	int closestVertIdx; //Index of the closest vertex (for ICP)
-	bool sample;
 
-	Vertex(int i, float* c) : idx(i), coords(c), sample(false) {};
+	Vertex(int i, float* c) : idx(i), coords(c) {};
 };
 
 struct Edge
