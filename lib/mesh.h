@@ -13,12 +13,12 @@ using namespace Eigen;
 
 #define INF (float) 1e38
 
-struct Triangle
+struct Face
 {
 	int idx; //Index of the triangle
-	int v1i, v2i, v3i; //Index of the vertices forming the triangle
+	int* vs; //Index of the vertices forming the triangle
 	
-	Triangle(int i, int i1, int i2, int i3) : idx(i), v1i(i1), v2i(i2), v3i(i3) {};
+	Face(int i, int* vis) : idx(i), vs(vis) {};
 };
 
 struct Vertex
@@ -44,7 +44,7 @@ struct Edge
 class Mesh
 {
 public:
-	vector< Triangle* > tris;
+	vector< Face* > faces;
 	vector< Vertex* > verts;
 	vector< Edge* > edges;
 	vector< int > samples;
@@ -52,15 +52,18 @@ public:
 
 	Mesh() {};
 	
-	float ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement);
+	vector<pair<Vector4f, float**>> ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement);
+	void transform(Vector4f, float**);
 	bool loadPnt(char* meshFile);
+	bool loadObj(char* meshFile);
 	void resultToFile(char* meshFile);
+	void resultToObj(char* meshFile);
 
 private:
 	// int addVertex(float* v);
 	// int addVertex(float x, float y, float z);
 	void addVertex(float* c);
-	// int addTriangle(int v1i, int v2i, int v3i);
+	int addFace(int* fa);
 	// void addEdge(int v1i, int v2i, bool interiorEdge = false);
 };
 

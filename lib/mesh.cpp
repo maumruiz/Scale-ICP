@@ -1,5 +1,8 @@
 #include "Mesh.h"
 #include <cmath>
+#include <fstream>
+#include "Eigen/Dense"
+using namespace Eigen;
 
 //Euclidean distance between v1 & v2
 inline float distanceBetween(float* v1, float* v2)
@@ -49,6 +52,77 @@ bool Mesh::loadPnt(char *meshFile)
 	return true;
 }
 
+bool Mesh::loadObj(char *meshFile)
+{
+    cout << "Point Cloud initializing (to " << meshFile << ")... \n";
+
+	ifstream fPtr;
+	fPtr.open(meshFile);
+	
+    if (!fPtr.is_open())
+	{
+		cout << "cannot read " << meshFile << endl
+			 << "WARNING: all input files must be in a folder named \"input\"; similarly there must exist a folder named \"output\" to write the results to\n";
+		exit(0);
+	}
+	
+	string line;
+	int cv = 0;
+    while (fPtr)
+	{
+		getline(fPtr, line);
+
+		if(line.size() == 0)
+            continue;
+		
+		if(line.substr(0, 2) == "v ") {
+			cv++;
+			stringstream ss(line);
+			char v;
+			float a, b, c;
+			float* co = new float[3];
+			ss >> v >> a >> b >> c;
+			co[0] = a;
+			co[1] = b;
+			co[2] = c;
+			addVertex(co);
+		}
+
+		if(line[0] == 'f') {
+			stringstream ss(line);
+			char v;
+			string a, b, c, d;
+			int v1, v2, v3, v4;
+			ss >> v >> a >> b >> c >> d;
+			stringstream sa(a);
+			sa >> v1;
+			stringstream sb(b);
+			sb >> v2;
+			stringstream sc(c);
+			sc >> v3;
+			stringstream sd(d);
+			sd >> v4;
+			int *fa = new int[4];
+			fa[0] = v1;
+			fa[1] = v2;
+			fa[2] = v3;
+			fa[3] = v4;
+			addFace(fa);
+		}
+	}
+
+	// Can be improved (max(maxEucDist, distanceBetween(v1, v2)))
+    maxEucDist = 0.0f;
+	for (int i = 0; i < (int) verts.size(); i++)
+		for (int j = 0; j < (int) verts.size(); j++)
+			if (distanceBetween(verts[i]->coords, verts[j]->coords) > maxEucDist)
+				maxEucDist = distanceBetween(verts[i]->coords, verts[j]->coords);
+	cout << "Distance between farthest 2 points: " << maxEucDist << endl;
+
+	cout << "Point cloud has " << (int) verts.size() << " vertices and " << (int) faces.size() << " faces\n\n";
+	return true;
+}
+
 // Fastly add verts w/ coords c to mesh; No duplication check
 void Mesh::addVertex(float* c)
 {
@@ -56,10 +130,18 @@ void Mesh::addVertex(float* c)
 	verts.push_back(new Vertex(vSize, c));
 }
 
+int Mesh::addFace(int* face)
+{
+	//add tri v1i-v2i-v3i to the triInd'th element of tris
+	int fInd = (int) faces.size();
+	faces.push_back( new Face(fInd, face) );
+	return fInd;
+}
+
 // transform this mesh towards the fixed mesh2 using ICP;
 //   closed-form rotation matrix is from eq. 21 of the original paper: A Method for Registration of 3-D Shapes
 // TRANSFORMING MESH: mesh1 -- FIXED MESH: mesh2
-float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement)
+vector<pair<Vector4f, float**>> Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement)
 {
     cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
 
@@ -110,12 +192,14 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
 	float** R1 = new float*[3]; //desired 3x3 rotation mtrx of current iteration
 	for (int i = 0; i < 3; i++)
 		R1[i] = new float[3];
-	float* t1 = new float[3]; //desired 1x3 translation
 
     // Parameters of the linear system to be solved in Adaptive Scaling
 	float A, B;
     float* C = new float[3];
     float* D = new float[3];
+
+	// Final results variables
+	vector<pair<Vector4f, float**>> transf;
 
 	// Iteration parameters
 	int nIters = 0;
@@ -301,6 +385,16 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
         }
         //cout << x(0) << "\t\t" << x(1) << " " << x(2) << " " << x(3) << "\n";//cout << x(0) << " ";
 
+		// Update final values of transformation
+		Vector4f xIt = x;
+		float** RIt = new float*[3]; //desired 3x3 rotation mtrx of current iteration
+		for (int i = 0; i < 3; i++) {
+			RIt[i] = new float[3];
+			for(int j = 0; j < 3; j++)
+				RIt[i][j] = R1[i][j];
+		}
+		transf.push_back(make_pair(xIt, RIt));
+
         prevMse = mse; //mse of previous iteration as a termination condition
 		//compute new mse value as an iteration condition
 		mse = 0.0f;
@@ -320,13 +414,36 @@ float Mesh::ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement
 
     //recapture memo
 	for (int i = 0; i < 3; i++) delete [] R1[i]; delete [] R1;
-	delete [] t1;
 	delete [] C;
 	delete [] D;
 
     cout << nIters-1 << "'th ICP iteration w/ final mse: " << mse << "\nICP done!\n";
+    return transf;
+}
 
-    return mse;
+void Mesh::transform(Vector4f st, float** r) {
+	for (int v = 0; v < (int) verts.size(); v++) {
+		float x = verts[v]->coords[0],
+			y = verts[v]->coords[1],
+			z = verts[v]->coords[2];
+		//rotation
+		verts[v]->coords[0] = r[0][0]*x + r[0][1]*y + r[0][2]*z;
+		verts[v]->coords[1] = r[1][0]*x + r[1][1]*y + r[1][2]*z;
+		verts[v]->coords[2] = r[2][0]*x + r[2][1]*y + r[2][2]*z;
+	}
+	for (int v = 0; v < (int) verts.size(); v++) {
+		float x = verts[v]->coords[0],
+			y = verts[v]->coords[1],
+			z = verts[v]->coords[2];
+		//scaling
+		verts[v]->coords[0] *= st(0);
+		verts[v]->coords[1] *= st(0);
+		verts[v]->coords[2] *= st(0);
+		//translation
+		verts[v]->coords[0] += st(1);
+		verts[v]->coords[1] += st(2);
+		verts[v]->coords[2] += st(3);
+	}
 }
 
 void Mesh::resultToFile(char* fName)
@@ -335,6 +452,19 @@ void Mesh::resultToFile(char* fName)
 	FILE* fPtrS = fopen(fName, "w");
 	for (int v = 0; v < (int) verts.size(); v++)
 		fprintf(fPtrS, "%f %f %f\n", verts[v]->coords[0], verts[v]->coords[1], verts[v]->coords[2]);
+	fclose(fPtrS);
+
+	cout << "\ntransformed mesh fprinted to " << fName << endl;
+}
+
+void Mesh::resultToObj(char* fName)
+{
+	//fprints transformed mesh
+	FILE* fPtrS = fopen(fName, "w");
+	for (int v = 0; v < (int) verts.size(); v++)
+		fprintf(fPtrS, "v %f %f %f\n", verts[v]->coords[0], verts[v]->coords[1], verts[v]->coords[2]);
+	for (int t = 0; t < (int) faces.size(); t++)
+		fprintf(fPtrS, "f %i %i %i %i\n", faces[t]->vs[0], faces[t]->vs[1], faces[t]->vs[2], faces[t]->vs[3]);
 	fclose(fPtrS);
 
 	cout << "\ntransformed mesh fprinted to " << fName << endl;
