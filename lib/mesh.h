@@ -55,7 +55,7 @@ public:
 	vector<pair<Vector4f, float**>> ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement);
 	void transform(Vector4f, float**);
 	bool loadPnt(char* meshFile);
-	bool loadObj(char* meshFile);
+	bool loadObj(char* meshFile, bool calculateSize);
 	void resultToFile(char* meshFile);
 	void resultToObj(char* meshFile);
 
