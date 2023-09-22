@@ -62,6 +62,7 @@ public:
 private:
 	// int addVertex(float* v);
 	// int addVertex(float x, float y, float z);
+	float calculateMaxEucDist();
 	void addVertex(float* c);
 	int addFace(int* fa);
 	// void addEdge(int v1i, int v2i, bool interiorEdge = false);

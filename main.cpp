@@ -14,7 +14,7 @@ int main(int argc, char ** argv) {
     // sprintf_s(fName, sizeof(fName), argv[1]);
     // sprintf_s(fName2, sizeof(fName), argv[2]);
     sprintf_s(fName, sizeof(fName), "alex_downsampled");
-    sprintf_s(fName2, sizeof(fName), "targetHead");
+    sprintf_s(fName2, sizeof(fName), "targetHeadFem");
     sprintf_s(fName3, sizeof(fName), "alex");
 
     sprintf_s(fNameExt, sizeof(fNameExt), "input\\%s.xyz", fName);
@@ -27,6 +27,16 @@ int main(int argc, char ** argv) {
     meshFinal->loadObj(fNameExt3, false);
 
     vector<pair<Vector4f, float**>> transf = mesh1->ICP(mesh2, nMaxIters, oneToOneStart, minDisplacement);
+
+    // bool prescale = true;
+	// if (prescale) {
+	// 	for (int v = 0; v < (int)meshFinal->verts.size(); v++)
+	// 		for (int c = 0; c < 3; c++)
+	// 			meshFinal->verts[v]->coords[c] *= (mesh2->maxEucDist / mesh1->maxEucDist);
+    // }
+    for(int i=0; i<transf.size(); i++) {
+        meshFinal->transform(transf[i].first, transf[i].second);
+    }
 
     sprintf_s(ofNameExt, sizeof(ofNameExt), "output\\%s_aligned.xyz", fName);
 	mesh1->resultToFile(ofNameExt);

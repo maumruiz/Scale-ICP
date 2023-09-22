@@ -16,6 +16,15 @@ inline float distanceBetween2(float *v1, float *v2)
 	return (float)(v2[0] - v1[0]) * (v2[0] - v1[0]) + (v2[1] - v1[1]) * (v2[1] - v1[1]) + (v2[2] - v1[2]) * (v2[2] - v1[2]);
 }
 
+float Mesh::calculateMaxEucDist()
+{
+	float maxDist = 0.0f;
+		for (int i = 0; i < (int)verts.size(); i++)
+			for (int j = 0; j < (int)verts.size(); j++)
+				maxDist = max(maxDist, distanceBetween(verts[i]->coords, verts[j]->coords));
+	return maxDist;
+}
+
 bool Mesh::loadPnt(char *meshFile)
 {
 	cout << "Point Cloud initializing (to " << meshFile << ")... \n";
@@ -40,12 +49,7 @@ bool Mesh::loadPnt(char *meshFile)
 		addVertex(co); // No duplicate check
 	}
 
-	// Can be improved (max(maxEucDist, distanceBetween(v1, v2)))
-	maxEucDist = 0.0f;
-	for (int i = 0; i < (int)verts.size(); i++)
-		for (int j = 0; j < (int)verts.size(); j++)
-			if (distanceBetween(verts[i]->coords, verts[j]->coords) > maxEucDist)
-				maxEucDist = distanceBetween(verts[i]->coords, verts[j]->coords);
+	maxEucDist = calculateMaxEucDist();
 	cout << "distance between farthest 2 points: " << maxEucDist << endl;
 
 	cout << "Point cloud has " << (int)verts.size() << " verts\n\n";
@@ -117,12 +121,8 @@ bool Mesh::loadObj(char *meshFile, bool calculateSize)
 
 	if (calculateSize)
 	{
-		// Can be improved (max(maxEucDist, distanceBetween(v1, v2)))
-		maxEucDist = 0.0f;
-		for (int i = 0; i < (int)verts.size(); i++)
-			for (int j = 0; j < (int)verts.size(); j++)
-				if (distanceBetween(verts[i]->coords, verts[j]->coords) > maxEucDist)
-					maxEucDist = distanceBetween(verts[i]->coords, verts[j]->coords);
+		
+		maxEucDist = calculateMaxEucDist();
 		cout << "Distance between farthest 2 points: " << maxEucDist << endl;
 	}
 
@@ -153,7 +153,7 @@ vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneT
 	cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
 
 	bool matured = false;
-	bool prescale = true; // true to prescale input pairs
+	bool prescale = false; // true to prescale input pairs
 
 	// Scale to ratio between [distance between farthest 2 points on fixed mesh2] and [distance between farthest 2 points on transforming mesh1]
 	if (prescale)
