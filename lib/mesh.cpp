@@ -218,7 +218,16 @@ vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneT
 		// break; //see the initial alignment (no ICP)
 		// nIters > 70 && // Activate closeness test after a good deal of iters; a heuristic no in use
 		if (fabs(mse - prevMse) <= closeness)
-			break;
+		{
+			float maxDist = calculateMaxEucDist();
+			if(maxDist < mesh2->maxEucDist / 2.0) {
+				for (int v = 0; v < (int)verts.size(); v++)
+					for (int c = 0; c < 3; c++)
+						verts[v]->coords[c] *= (mesh2->maxEucDist / maxDist); // scaled by the euclidean ratio
+			}
+			else
+				break;
+		}
 
 		// New center of mass of the transforming mesh
 		sum[0] = sum[1] = sum[2] = 0.0f;
