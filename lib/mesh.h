@@ -52,7 +52,7 @@ public:
 
 	Mesh() {};
 	
-	vector<pair<Vector4f, float**>> ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement);
+	vector<pair<Vector4f, float**>> ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale);
 	void transform(Vector4f, float**);
 	bool loadPnt(char* meshFile);
 	bool loadObj(char* meshFile, bool calculateSize);

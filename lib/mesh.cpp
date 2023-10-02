@@ -148,12 +148,11 @@ int Mesh::addFace(int *face)
 // transform this mesh towards the fixed mesh2 using ICP;
 //   closed-form rotation matrix is from eq. 21 of the original paper: A Method for Registration of 3-D Shapes
 // TRANSFORMING MESH: mesh1 -- FIXED MESH: mesh2
-vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneToOne, float minDisplacement)
+vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale)
 {
 	cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
 
 	bool matured = false;
-	bool prescale = false; // true to prescale input pairs
 
 	// Scale to ratio between [distance between farthest 2 points on fixed mesh2] and [distance between farthest 2 points on transforming mesh1]
 	if (prescale)
@@ -219,14 +218,14 @@ vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneT
 		// nIters > 70 && // Activate closeness test after a good deal of iters; a heuristic no in use
 		if (fabs(mse - prevMse) <= closeness)
 		{
-			float maxDist = calculateMaxEucDist();
-			if(maxDist < mesh2->maxEucDist / 2.0) {
-				for (int v = 0; v < (int)verts.size(); v++)
-					for (int c = 0; c < 3; c++)
-						verts[v]->coords[c] *= (mesh2->maxEucDist / maxDist); // scaled by the euclidean ratio
-			}
-			else
-				break;
+			// float maxDist = calculateMaxEucDist();
+			// if(maxDist < mesh2->maxEucDist / 2.0) {
+			// 	for (int v = 0; v < (int)verts.size(); v++)
+			// 		for (int c = 0; c < 3; c++)
+			// 			verts[v]->coords[c] *= (mesh2->maxEucDist / maxDist); // scaled by the euclidean ratio
+			// }
+			// else
+			break;
 		}
 
 		// New center of mass of the transforming mesh

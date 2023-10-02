@@ -6,15 +6,16 @@ using namespace std;
 int main(int argc, char ** argv) {
     int nMaxIters = 200;
 	bool oneToOneStart = true;
+    bool prescale = true;
 
 	char fName[250], fName2[250], fName3[250], fNameExt[250], fNameExt2[250], fNameExt3[250];
     char ofNameExt[250], ofNameExt2[250];
-	float minDisplacement = 0.001f;
+	float minDisplacement = 10.0f;
 
     // sprintf_s(fName, sizeof(fName), argv[1]);
     // sprintf_s(fName2, sizeof(fName), argv[2]);
     sprintf_s(fName, sizeof(fName), "alex_downsampled");
-    sprintf_s(fName2, sizeof(fName), "targetHeadFem");
+    sprintf_s(fName2, sizeof(fName), "baseAligned");
     sprintf_s(fName3, sizeof(fName), "alex");
 
     sprintf_s(fNameExt, sizeof(fNameExt), "input\\%s.xyz", fName);
@@ -26,14 +27,14 @@ int main(int argc, char ** argv) {
     mesh2->loadObj(fNameExt2, true);
     meshFinal->loadObj(fNameExt3, false);
 
-    vector<pair<Vector4f, float**>> transf = mesh1->ICP(mesh2, nMaxIters, oneToOneStart, minDisplacement);
+    vector<pair<Vector4f, float**>> transf = mesh1->ICP(mesh2, nMaxIters, oneToOneStart, minDisplacement, prescale);
 
-    // bool prescale = true;
-	// if (prescale) {
-	// 	for (int v = 0; v < (int)meshFinal->verts.size(); v++)
-	// 		for (int c = 0; c < 3; c++)
-	// 			meshFinal->verts[v]->coords[c] *= (mesh2->maxEucDist / mesh1->maxEucDist);
-    // }
+	if (prescale) {
+		for (int v = 0; v < (int)meshFinal->verts.size(); v++)
+			for (int c = 0; c < 3; c++)
+				meshFinal->verts[v]->coords[c] *= (mesh2->maxEucDist / mesh1->maxEucDist);
+    }
+
     for(int i=0; i<transf.size(); i++) {
         meshFinal->transform(transf[i].first, transf[i].second);
     }
