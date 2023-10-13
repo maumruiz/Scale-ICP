@@ -6,6 +6,8 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <cmath>
+#include <fstream>
 using namespace std;
 
 #include "Eigen/Dense"
@@ -48,14 +50,17 @@ public:
 	vector< Vertex* > verts;
 	vector< Edge* > edges;
 	vector< int > samples;
+	int numVerts;
+	int numFaces;
 	float maxEucDist;
 
 	Mesh() {};
 	
-	vector<pair<Vector4f, float**>> ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale);
+	vector<pair<Vector4f, float**>> ICP(Mesh* mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale, bool perfCorr);
 	void transform(Vector4f, float**);
 	bool loadPnt(char* meshFile);
 	bool loadObj(char* meshFile, bool calculateSize);
+	bool loadLandmarks(char* meshFile);
 	void resultToFile(char* meshFile);
 	void resultToObj(char* meshFile);
 

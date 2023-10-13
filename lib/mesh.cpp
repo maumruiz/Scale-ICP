@@ -1,8 +1,4 @@
 #include "Mesh.h"
-#include <cmath>
-#include <fstream>
-#include "Eigen/Dense"
-using namespace Eigen;
 
 // Euclidean distance between v1 & v2
 inline float distanceBetween(float *v1, float *v2)
@@ -130,11 +126,49 @@ bool Mesh::loadObj(char *meshFile, bool calculateSize)
 	return true;
 }
 
+bool Mesh::loadLandmarks(char *meshFile)
+{
+	cout << "Landmarks initializing (to " << meshFile << ")... \n";
+
+	FILE *fPtr;
+	if (!(fPtr = fopen(meshFile, "r")))
+	{
+		cout << "cannot read " << meshFile << endl
+			 << "WARNING: all input files must be in a folder named \"input\"; similarly there must exist a folder named \"output\" to write the results to\n";
+		exit(0);
+	}
+
+	int n = 1;
+	while (!feof(fPtr))
+	{
+		float a, b, c;
+		fscanf(fPtr, "%f %f %f\n", &a, &b, &c);
+		float *co = new float[3];
+		co[0] = a;
+		co[1] = b;
+		co[2] = c;
+
+		if(n == 33 || n == 34 || n == 35 || n == 45) {
+			n++;
+			continue;
+		}
+		addVertex(co); // No duplicate check
+		n++;
+	}
+
+	maxEucDist = calculateMaxEucDist();
+	cout << "distance between farthest 2 points: " << maxEucDist << endl;
+
+	cout << "Point cloud has " << (int)verts.size() << " verts\n\n";
+	return true;
+}
+
 // Fastly add verts w/ coords c to mesh; No duplication check
 void Mesh::addVertex(float *c)
 {
 	int vSize = (int)verts.size(); // size before push_back just-below
 	verts.push_back(new Vertex(vSize, c));
+	numVerts = vSize+1;
 }
 
 int Mesh::addFace(int *face)
@@ -142,13 +176,14 @@ int Mesh::addFace(int *face)
 	// add tri v1i-v2i-v3i to the triInd'th element of tris
 	int fInd = (int)faces.size();
 	faces.push_back(new Face(fInd, face));
+	numFaces = fInd+1;
 	return fInd;
 }
 
 // transform this mesh towards the fixed mesh2 using ICP;
 //   closed-form rotation matrix is from eq. 21 of the original paper: A Method for Registration of 3-D Shapes
 // TRANSFORMING MESH: mesh1 -- FIXED MESH: mesh2
-vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale)
+vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale, bool perfCorr)
 {
 	cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
 
@@ -289,6 +324,15 @@ vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneT
 				cout << "WARNING: this may happen in oneToOneMatches mode if a valid mesh2 point candidate cannot be found; easy fix: oneToOneMatches=false\n";
 			matchedP2s.push_back(mv);
 			mesh2->verts[mv]->closestVertIdx = samples[bv1];
+		}
+
+		if (perfCorr){
+			matchedP2s.clear();//set i-i correspondences w/ dealing w/ closest-point metric (or other metric) for correspondence; note that i-i corresps may suck for partial vs. complete cases since partial indexes are probably shifted
+			for (int bv1 = 0; bv1 < nP1; bv1++) {
+				int p2idx = samples[bv1]; //assume i-i ground-truth correspondence
+				mesh2->verts[p2idx]->closestVertIdx = samples[bv1];
+				matchedP2s.push_back(p2idx);
+			}
 		}
 
 		// Now that closest pnt correspondence is done, i.e. closestVertIdx's are set, i can fill ms1
