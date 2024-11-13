@@ -63,6 +63,7 @@ public:
 	bool loadLandmarks(char* meshFile);
 	void resultToFile(char* meshFile);
 	void resultToObj(char* meshFile);
+	void updateObjVertices(char* meshFile, char* outFile);
 
 private:
 	// int addVertex(float* v);

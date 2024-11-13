@@ -23,13 +23,13 @@ float Mesh::calculateMaxEucDist()
 
 bool Mesh::loadPnt(char *meshFile)
 {
-	cout << "Point Cloud initializing (to " << meshFile << ")... \n";
+	// cout << "Point Cloud initializing (to " << meshFile << ")... \n";
+	cout << "Initializing " << meshFile << ")..." << endl;
 
 	FILE *fPtr;
 	if (!(fPtr = fopen(meshFile, "r")))
 	{
-		cout << "cannot read " << meshFile << endl
-			 << "WARNING: all input files must be in a folder named \"input\"; similarly there must exist a folder named \"output\" to write the results to\n";
+		cout << "cannot read " << meshFile << endl;
 		exit(0);
 	}
 
@@ -46,23 +46,25 @@ bool Mesh::loadPnt(char *meshFile)
 	}
 
 	maxEucDist = calculateMaxEucDist();
-	cout << "distance between farthest 2 points: " << maxEucDist << endl;
+	// cout << "distance between farthest 2 points: " << maxEucDist << endl;
 
-	cout << "Point cloud has " << (int)verts.size() << " verts\n\n";
+	// cout << "Point cloud has " << (int)verts.size() << " verts\n\n";
+
+	cout << "Size " << maxEucDist << "  -  " << (int)verts.size() << " vertices" << endl;
 	return true;
 }
 
 bool Mesh::loadObj(char *meshFile, bool calculateSize)
 {
-	cout << "Point Cloud initializing (to " << meshFile << ")... \n";
+	// cout << "Point Cloud initializing (to " << meshFile << ")... \n";
+	cout << "Initializing " << meshFile << ")..." << endl;
 
 	ifstream fPtr;
 	fPtr.open(meshFile);
 
 	if (!fPtr.is_open())
 	{
-		cout << "cannot read " << meshFile << endl
-			 << "WARNING: all input files must be in a folder named \"input\"; similarly there must exist a folder named \"output\" to write the results to\n";
+		cout << "cannot read " << meshFile << endl;
 		exit(0);
 	}
 
@@ -119,22 +121,23 @@ bool Mesh::loadObj(char *meshFile, bool calculateSize)
 	{
 		
 		maxEucDist = calculateMaxEucDist();
-		cout << "Distance between farthest 2 points: " << maxEucDist << endl;
+		// cout << "Distance between farthest 2 points: " << maxEucDist << endl;
 	}
 
-	cout << "Point cloud has " << (int)verts.size() << " vertices and " << (int)faces.size() << " faces\n\n";
+	// cout << "Point cloud has " << (int)verts.size() << " vertices and " << (int)faces.size() << " faces\n\n";
+	cout << "Size " << maxEucDist << "  -  " << (int)verts.size() << " vertices" << endl;
 	return true;
 }
 
 bool Mesh::loadLandmarks(char *meshFile)
 {
-	cout << "Landmarks initializing (to " << meshFile << ")... \n";
+	// cout << "Landmarks initializing (to " << meshFile << ")... \n";
+	cout << "Initializing " << meshFile << ")..." << endl;
 
 	FILE *fPtr;
 	if (!(fPtr = fopen(meshFile, "r")))
 	{
-		cout << "cannot read " << meshFile << endl
-			 << "WARNING: all input files must be in a folder named \"input\"; similarly there must exist a folder named \"output\" to write the results to\n";
+		cout << "cannot read " << meshFile << endl;
 		exit(0);
 	}
 
@@ -157,9 +160,10 @@ bool Mesh::loadLandmarks(char *meshFile)
 	}
 
 	maxEucDist = calculateMaxEucDist();
-	cout << "distance between farthest 2 points: " << maxEucDist << endl;
+	// cout << "distance between farthest 2 points: " << maxEucDist << endl;
 
-	cout << "Point cloud has " << (int)verts.size() << " verts\n\n";
+	// cout << "Point cloud has " << (int)verts.size() << " verts\n\n";
+	cout << "Size " << maxEucDist << "  -  " << (int)verts.size() << " vertices" << endl;
 	return true;
 }
 
@@ -185,7 +189,8 @@ int Mesh::addFace(int *face)
 // TRANSFORMING MESH: mesh1 -- FIXED MESH: mesh2
 vector<pair<Vector4f, float **>> Mesh::ICP(Mesh *mesh2, int nMaxIters, bool oneToOne, float minDisplacement, bool prescale, bool perfCorr)
 {
-	cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
+	// cout << "Scale-Adaptive ICP in action (kd-tree not in use; affects running time drastically for large inputs)..\n";
+	cout << "Scale-Adaptive ICP in action..." << endl;
 
 	bool matured = false;
 
@@ -532,7 +537,7 @@ void Mesh::resultToFile(char *fName)
 		fprintf(fPtrS, "%f %f %f\n", verts[v]->coords[0], verts[v]->coords[1], verts[v]->coords[2]);
 	fclose(fPtrS);
 
-	cout << "\ntransformed mesh fprinted to " << fName << endl;
+	// cout << "Transformed points fprinted to " << fName << endl;
 }
 
 void Mesh::resultToObj(char *fName)
@@ -546,5 +551,34 @@ void Mesh::resultToObj(char *fName)
 		// fprintf(fPtrS, "f %i %i %i %i\n", faces[t]->vs[0], faces[t]->vs[1], faces[t]->vs[2], faces[t]->vs[3]);
 	fclose(fPtrS);
 
-	cout << "\ntransformed mesh fprinted to " << fName << endl;
+	// cout << "Transformed mesh fprinted to " << fName << endl;
+}
+
+void Mesh::updateObjVertices(char *fName, char *outName)
+{
+    ifstream infile(fName);
+	ofstream outFile(outName);
+    if(!infile.is_open())
+	{
+		cout << "cannot read " << fName << endl;
+		exit(0);
+	}
+
+    string line;
+	int v = 0;
+	while (getline(infile, line))
+	{
+		if(line.size() > 0 && line[0] == 'v' && line[1] == ' ') {
+			stringstream ss;
+        	ss << "v " << verts[v]->coords[0] << " " << verts[v]->coords[1] << " " << verts[v]->coords[2];
+			outFile << ss.str() << endl;
+			v++;
+        }
+        else {
+            outFile << line << endl;
+        }
+	}
+    infile.close();
+	outFile.close();
+	// cout << "Transformed mesh fprinted to " << outName << endl;
 }
